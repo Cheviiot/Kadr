@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Dev launcher for Kadr."""
+
+import sys
+from pathlib import Path
+
+# All pycache in one place
+sys.pycache_prefix = str(Path(__file__).resolve().parent / ".pycache")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from kadr.__main__ import main
+
+main()

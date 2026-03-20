@@ -1,0 +1,90 @@
+/* Kadr — Custom GTK4/Adwaita styles */
+
+/* ── Grid Layout ──────────────────────────────────────────────────────────── */
+
+flowboxchild {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    outline: none;
+    border: none;
+    box-shadow: none;
+}
+
+flowboxchild:focus,
+flowboxchild:hover,
+flowboxchild:selected {
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
+/* ── Media Card (Tile) ────────────────────────────────────────────────────── */
+
+.media-card {
+    border-radius: 14px;
+    background: @card_bg_color;
+    box-shadow: 0 1px 3px alpha(black, 0.10), 0 0 0 1px alpha(black, 0.04);
+    transition: box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+
+.media-card:hover {
+    box-shadow: 0 4px 12px alpha(black, 0.16), 0 0 0 1px alpha(black, 0.06);
+}
+
+/* ── Poster Image / Skeleton ──────────────────────────────────────────────── */
+
+.poster-image {
+    background-color: alpha(@card_shade_color, 0.15);
+    border-radius: 14px;
+}
+
+/* ── Card Info Overlay ────────────────────────────────────────────────────── */
+
+.card-info {
+    padding: 20px 8px 8px 8px;
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        alpha(black, 0.55) 50%,
+        alpha(black, 0.75) 100%);
+    border-radius: 0 0 14px 14px;
+}
+
+.card-info label {
+    color: white;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 0.85em;
+    opacity: 0.92;
+}
+
+.media-card:hover .card-title {
+    opacity: 1;
+}
+
+.card-year {
+    font-size: 0.78em;
+    opacity: 0.65;
+}
+
+/* ── Rating Badge ─────────────────────────────────────────────────────────── */
+
+.rating-badge {
+    background-color: rgba(0, 0, 0, 0.55);
+    color: rgba(245, 197, 24, 0.95);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-weight: bold;
+    font-size: 0.8em;
+}
+
+/* ── Status Labels ────────────────────────────────────────────────────────── */
+.success-label {
+    color: @success_color;
+}
+
+.error-label {
+    color: @error_color;
+}

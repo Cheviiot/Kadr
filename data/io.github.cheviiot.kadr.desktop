@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Kadr
+Comment=Movie & TV torrent search
+Comment[ru]=Поиск торрентов фильмов и сериалов
+Exec=kadr
+Icon=io.github.cheviiot.kadr
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Network;
+Keywords=movies;torrents;tmdb;
+StartupNotify=true
