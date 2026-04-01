@@ -6,7 +6,7 @@ from gi.repository import Gtk
 class TorrentRow(Gtk.ListBoxRow):
     """Row widget displaying a torrent search result."""
 
-    def __init__(self, torrent, on_download, on_copy):
+    def __init__(self, torrent, on_download, on_copy, on_stream=None):
         super().__init__()
         self.torrent = torrent
 
@@ -55,6 +55,15 @@ class TorrentRow(Gtk.ListBoxRow):
         # Actions column
         actions = Gtk.Box(spacing=8, valign=Gtk.Align.CENTER)
         box.append(actions)
+
+        if on_stream:
+            stream_btn = Gtk.Button(
+                icon_name='media-playback-start-symbolic',
+                tooltip_text='Смотреть',
+            )
+            stream_btn.add_css_class('suggested-action')
+            stream_btn.connect('clicked', lambda *_: on_stream(torrent))
+            actions.append(stream_btn)
 
         dl_btn = Gtk.Button(
             icon_name='folder-download-symbolic',

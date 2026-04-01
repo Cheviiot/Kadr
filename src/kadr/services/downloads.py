@@ -16,6 +16,8 @@ DOWNLOAD_CLIENTS = [
     {'id': 'ktorrent', 'name': 'KTorrent', 'command': 'ktorrent'},
 ]
 
+_HISTORY_MAX = 100
+
 
 class DownloadManager:
     def __init__(self, settings=None):
@@ -27,18 +29,44 @@ class DownloadManager:
         self._data_file = os.path.join(self._data_dir, 'downloads.json')
         self._history = self._load_history()
         self._lock = threading.Lock()
+        self._tmp_dir = os.path.join(tempfile.gettempdir(), 'kadr_torrents')
+        self._cleanup_temp()
 
     def _load_history(self):
         try:
             with open(self._data_file) as f:
-                return json.load(f)
+                data = json.load(f)
+                return data[-_HISTORY_MAX:] if len(data) > _HISTORY_MAX else data
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 
     def _save_history(self):
         os.makedirs(self._data_dir, exist_ok=True)
+        self._history = self._history[-_HISTORY_MAX:]
         with open(self._data_file, 'w') as f:
             json.dump(self._history, f, indent=2, ensure_ascii=False)
+
+    def _cleanup_temp(self):
+        """Remove stale temp torrent files older than 1 hour."""
+        if not os.path.isdir(self._tmp_dir):
+            return
+        cutoff = time.time() - 3600
+        for name in os.listdir(self._tmp_dir):
+            path = os.path.join(self._tmp_dir, name)
+            try:
+                if os.path.getmtime(path) < cutoff:
+                    os.remove(path)
+            except OSError:
+                pass
+
+    def _launch_client(self, client, arg):
+        """Launch torrent client and raise on failure."""
+        try:
+            subprocess.Popen([client['command'], arg])
+        except OSError as e:
+            raise RuntimeError(
+                f'Не удалось запустить {client["name"]}: {e}'
+            )
 
     def available_clients(self):
         return [c for c in DOWNLOAD_CLIENTS if shutil.which(c['command'])]
@@ -64,7 +92,8 @@ class DownloadManager:
                 'Торрент-клиент не найден. '
                 'Установите qBittorrent, Transmission или другой клиент.'
             )
-        subprocess.Popen([client['command'], magnet_uri])
+
+        self._launch_client(client, magnet_uri)
 
         entry = {
             'name': name,
@@ -94,14 +123,14 @@ class DownloadManager:
         if not safe_name.lower().endswith('.torrent'):
             safe_name += '.torrent'
 
-        tmp_dir = os.path.join(tempfile.gettempdir(), 'kadr_torrents')
+        tmp_dir = self._tmp_dir
         os.makedirs(tmp_dir, exist_ok=True)
         path = os.path.join(tmp_dir, safe_name)
 
         with open(path, 'wb') as f:
             f.write(resp.content)
 
-        subprocess.Popen([client['command'], path])
+        self._launch_client(client, path)
 
         entry = {
             'name': name,

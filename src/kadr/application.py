@@ -84,8 +84,8 @@ class KadrApplication(Adw.Application):
             developer_name='Cheviiot',
             website='https://github.com/Cheviiot/Kadr',
             issue_url='https://github.com/Cheviiot/Kadr/issues',
-            license_type=Gtk.License.MIT_X11,
+            license_type=Gtk.License.GPL_3_0,
             developers=['Cheviiot'],
-            copyright='© 2024–2026 Cheviiot',
+            copyright='© 2026 Cheviiot',
         )
         about.present()

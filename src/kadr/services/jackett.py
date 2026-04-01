@@ -3,9 +3,9 @@ import requests
 import urllib.parse
 
 JACKETT_SERVERS = [
-    {'id': 'jacred_xyz', 'name': 'Jacred.xyz', 'url': 'jacred.xyz', 'key': ''},
-    {'id': 'jac_red_ru', 'name': 'Jac-red.ru', 'url': 'jac-red.ru', 'key': ''},
     {'id': 'jac_red', 'name': 'Jac.red', 'url': 'jac.red', 'key': ''},
+    {'id': 'jac_red_ru', 'name': 'Jac-red.ru', 'url': 'jac-red.ru', 'key': ''},
+    {'id': 'pro_jacred_ru', 'name': 'pro.jacred.ru', 'url': 'pro.jacred.ru', 'key': ''},
 ]
 
 

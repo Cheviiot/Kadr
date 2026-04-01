@@ -2,12 +2,15 @@ import os
 import hashlib
 import threading
 import subprocess
+import collections
 
 from gi.repository import GLib, GdkPixbuf, Gdk
 
 import requests
 
-_image_cache = {}
+_IMAGE_CACHE_MAX = 200
+_image_cache = collections.OrderedDict()
+_image_lock = threading.Lock()
 _cache_dir = None
 _download_sem = threading.Semaphore(6)
 
@@ -31,9 +34,11 @@ def load_image_async(url, width, height, callback):
 
     cache_key = f'{width}x{height}:{url}'
 
-    if cache_key in _image_cache:
-        GLib.idle_add(callback, _image_cache[cache_key])
-        return
+    with _image_lock:
+        if cache_key in _image_cache:
+            _image_cache.move_to_end(cache_key)
+            GLib.idle_add(callback, _image_cache[cache_key])
+            return
 
     def _worker():
         try:
@@ -82,7 +87,10 @@ def load_image_async(url, width, height, callback):
 
             if pixbuf:
                 texture = Gdk.Texture.new_for_pixbuf(pixbuf)
-                _image_cache[cache_key] = texture
+                with _image_lock:
+                    _image_cache[cache_key] = texture
+                    if len(_image_cache) > _IMAGE_CACHE_MAX:
+                        _image_cache.popitem(last=False)
                 GLib.idle_add(callback, texture)
             else:
                 GLib.idle_add(callback, None)
@@ -107,9 +115,9 @@ def run_async(func, callback, *args):
 def copy_to_clipboard(text):
     """Copy text to clipboard using system tools."""
     for cmd in (
+        ['wl-copy'],
         ['xclip', '-selection', 'clipboard'],
         ['xsel', '--clipboard', '--input'],
-        ['wl-copy'],
     ):
         try:
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

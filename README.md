@@ -1,127 +1,99 @@
+<p align="center">
+  <img src="data/Kadr.png" alt="Kadr" width="128">
+</p>
+
 <h1 align="center">Kadr</h1>
 
 <p align="center">
-  <strong>🎬 Элегантное приложение для поиска торрентов фильмов и сериалов</strong>
+  Поиск торрентов фильмов и сериалов через TMDB и Jackett
 </p>
 
 <p align="center">
-  <a href="https://github.com/Cheviiot/Kadr/releases"><img src="https://img.shields.io/github/v/release/Cheviiot/Kadr?style=flat-square&color=blue" alt="Release"></a>
-  <a href="https://github.com/Cheviiot/Kadr/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Cheviiot/Kadr?style=flat-square" alt="License"></a>
+  <img src="https://img.shields.io/badge/GTK-4-4a86cf?style=flat-square" alt="GTK 4">
+  <img src="https://img.shields.io/badge/Libadwaita-1-3584e4?style=flat-square" alt="Libadwaita">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square" alt="Python 3.10+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-green?style=flat-square" alt="GPL-3.0"></a>
 </p>
 
-<p align="center">
-  <a href="#-установка">Установка</a> •
-  <a href="#-особенности">Особенности</a> •
-  <a href="#-запуск">Запуск</a> •
-  <a href="#-лицензия">Лицензия</a>
-</p>
 
----
+## О проекте
 
-## ✨ Особенности
+Kadr — приложение для поиска торрентов фильмов и сериалов.
+Показывает каталог из TMDB с постерами и рейтингами, ищет торренты через публичные
+Jackett-серверы и отправляет загрузку в любимый торрент-клиент — всё из одного окна.
 
-- 🔍 **Поиск фильмов и сериалов** — интеграция с TMDB
-- 🧲 **Поиск торрентов** — через публичные Jackett серверы (без настройки!)
-- ⬇️ **Загрузка в один клик** — отправка в FDM, qBittorrent, Transmission, Deluge, KTorrent
-- 🎨 **Нативный интерфейс** — GTK4 + libadwaita
-- 🚀 **Быстрая работа** — Python, асинхронная загрузка изображений
+## Возможности
 
----
+- **Каталог** — популярные фильмы и сериалы из TMDB, постеры, рейтинги, бесконечная подгрузка
+- **Поиск** — поиск по названию в реальном времени с пагинацией
+- **Торренты** — поиск через публичные Jackett-серверы (jacred.xyz, jac-red.ru, jac.red), без настройки
+- **Загрузка** — отправка в FDM, qBittorrent, Transmission, Deluge, KTorrent одним кликом
+- **Автовыбор** — автоматический выбор работающего сервера, прокси и клиента
+- **Настройки** — выбор сервера, TMDB-прокси, торрент-клиента с проверкой доступности
+- **Локализация** — интерфейс на русском языке
 
-## 🛠️ Технологии
-
-| Компонент | Стек |
-|-----------|------|
-| UI | GTK4 + libadwaita |
-| Язык | Python 3.10+ |
-| HTTP | requests |
-| API | TMDB, Jackett |
-
----
-
-## 📦 Установка зависимостей
-
-### Fedora
-
-```bash
-sudo dnf install gtk4-devel libadwaita-devel python3-gobject python3-requests
-```
-
-### Ubuntu / Debian
-
-```bash
-sudo apt install libgtk-4-dev libadwaita-1-dev gir1.2-adw-1 python3-gi python3-requests
-```
-
-### Arch Linux
-
-```bash
-sudo pacman -S gtk4 libadwaita python-gobject python-requests
-```
-
-Или через pip (PyGObject требует системных библиотек GTK):
-
-```bash
-pip install requests PyGObject
-```
-
----
-
-## 🚀 Запуск
+## Установка
 
 ### Из исходников
 
-```bash
+```
 git clone https://github.com/Cheviiot/Kadr.git
 cd Kadr
 ./kadr
 ```
 
-**Горячие клавиши:**
-- `Ctrl+F` — Поиск
-- `Ctrl+Q` — Выход
+<details>
+<summary><strong>Зависимости</strong></summary>
 
----
+| Дистрибутив      | Команда                                                                         |
+|------------------|---------------------------------------------------------------------------------|
+| ALT Linux        | `apt-get install python3-module-pygobject3 libgtk4 libadwaita python3-module-requests` |
+| Fedora           | `dnf install python3-gobject gtk4 libadwaita python3-requests`                  |
+| Arch             | `pacman -S python-gobject gtk4 libadwaita python-requests`                      |
+| Debian / Ubuntu  | `apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-requests`          |
 
-## 📁 Структура проекта
+</details>
 
-```
-kadr                             # Исполняемый лаунчер
-pyproject.toml                   # Сборка (hatchling)
-data/
-  Kadr.png                       # Иконка приложения
-  io.github.cheviiot.kadr.desktop
-src/kadr/
-  __init__.py                    # Версия, пути, константы
-  __main__.py                    # Entry point, проверка gi
-  application.py                 # Adw.Application
-  window.py                      # Главное окно
-  utils.py                       # Утилиты (async, кеш изображений)
-  data/
-    style.css                    # Кастомные стили
-  services/
-    settings.py                  # Настройки (~/.config/Kadr/)
-    tmdb.py                      # TMDB API
-    jackett.py                   # Jackett торрент-поиск
-    downloads.py                 # Менеджер загрузок
-  views/
-    home.py                      # Главный вид (сетка, поиск, табы)
-    detail.py                    # Детали фильма/сериала + торренты
-    settings_dialog.py           # Диалог настроек
-  widgets/
-    media_card.py                # Карточка фильма/сериала
-    torrent_row.py               # Строка торрента
-archive/                         # Предыдущая версия (Go + Wails v3)
-```
+## Использование
 
----
+### Как работает Kadr
 
-## 📄 Лицензия
+| Шаг | | |
+|---|---|---|
+| **1** | **Выбери фильм или сериал** | Найди в каталоге или через поиск (Ctrl+F) |
+| **2** | **Открой детали** | Нажми на карточку — откроется страница с описанием |
+| **3** | **Найди торрент** | Торренты загружаются автоматически с Jackett-серверов |
+| **4** | **Скачай** | Нажми кнопку загрузки — файл откроется в торрент-клиенте |
 
-[MIT](LICENSE)
+### Горячие клавиши
 
----
+| Действие    | Комбинация  |
+|-------------|-------------|
+| Поиск       | `Ctrl+F`    |
+| Настройки   | `Ctrl+,`    |
+| Выход       | `Ctrl+Q`    |
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/Cheviiot">Cheviiot</a>
-</p>
+## Настройки
+
+| Параметр         | Варианты                                  | По умолчанию   |
+|------------------|-------------------------------------------|----------------|
+| Торрент-сервер   | Автоматически / jacred.xyz / jac-red.ru / jac.red | Автоматически |
+| TMDB-прокси      | Автоматически / Напрямую / APN Render     | Автоматически  |
+| Торрент-клиент   | Автоматически / FDM / qBittorrent / Transmission / Deluge / KTorrent | Автоматически |
+
+## Данные
+
+| Путь                              | Содержимое           |
+|-----------------------------------|----------------------|
+| `~/.config/Kadr/settings.json`    | Настройки            |
+
+## Участие в разработке
+
+> Это личный проект. Kadr создаётся одним человеком для собственного использования при помощи ИИ.
+
+Код полностью открыт. Если хотите помочь — Pull Request и Issue приветствуются:
+исправление ошибок, новые функции, переводы.
+
+## Лицензия
+
+[GPL-3.0-or-later](LICENSE)

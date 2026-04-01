@@ -1,18 +1,16 @@
-import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
 from gi.repository import Adw, Gtk
 
 from kadr.services.settings import SettingsManager
 from kadr.services.tmdb import TMDBService
 from kadr.services.jackett import JackettService
 from kadr.services.downloads import DownloadManager
+from kadr.services.streamer import TorrentStreamer
 
 
 class KadrWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_default_size(870, 800)
+        self.set_default_size(1200, 800)
         self.set_title("Kadr")
 
         # Backend services
@@ -20,6 +18,7 @@ class KadrWindow(Adw.ApplicationWindow):
         self.tmdb = TMDBService(self.settings_manager)
         self.jackett = JackettService(self.settings_manager)
         self.downloads = DownloadManager(self.settings_manager)
+        self.streamer = TorrentStreamer()
 
         # Toast overlay (wraps everything for notifications)
         self.toast_overlay = Adw.ToastOverlay()

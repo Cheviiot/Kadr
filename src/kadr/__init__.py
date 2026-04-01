@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-__version__ = '2.0.0'
+__version__ = '0.1.0'
 APP_ID = 'io.github.cheviiot.kadr'
 APP_NAME = 'Kadr'
 

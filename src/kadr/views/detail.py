@@ -3,19 +3,25 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Adw, Gtk
 
-from kadr.utils import run_async, load_image_async, copy_to_clipboard
-from kadr.widgets.torrent_row import TorrentRow
+from kadr.utils import run_async, load_image_async
+
+
+def _fmt_runtime(minutes):
+    if not minutes:
+        return ''
+    h, m = divmod(int(minutes), 60)
+    return f'{h} ч {m} мин' if h else f'{m} мин'
 
 
 class DetailView:
-    """Detail view showing movie/TV info and torrent search results."""
+    """Detail view styled as a streaming platform page."""
 
     def __init__(self, window, media_type, data):
         self.window = window
         self.media_type = media_type
         self.data = data
         self._build()
-        self._search_torrents()
+        self._load_details()
 
     @property
     def page(self):
@@ -26,243 +32,285 @@ class DetailView:
     def _build(self):
         from kadr.widgets.media_card import _resolve_title
         title, year_str = _resolve_title(self.data, self.media_type)
-        self._page = Adw.NavigationPage(title=title)
+        self._title = title
+        self._year_str = year_str
 
+        self._page = Adw.NavigationPage(title=title)
         toolbar_view = Adw.ToolbarView()
         self._page.set_child(toolbar_view)
 
         header = Adw.HeaderBar()
+        header.add_css_class('flat')
         toolbar_view.add_top_bar(header)
 
         scrolled = Gtk.ScrolledWindow(vexpand=True)
         toolbar_view.set_content(scrolled)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
-        content.set_margin_start(24)
-        content.set_margin_end(24)
-        content.set_margin_top(24)
-        content.set_margin_bottom(24)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         scrolled.set_child(content)
 
-        # ── Info section (poster + details) ───────────────────
+        # ── Hero section (backdrop + gradient + poster + info) ──
+        hero_overlay = Gtk.Overlay()
+        hero_overlay.set_size_request(-1, 420)
+        content.append(hero_overlay)
 
-        info_box = Gtk.Box(spacing=24)
-        content.append(info_box)
+        # Backdrop image
+        self._backdrop = Gtk.Picture()
+        self._backdrop.set_content_fit(Gtk.ContentFit.COVER)
+        self._backdrop.set_size_request(-1, 420)
+        self._backdrop.add_css_class('detail-backdrop')
+        hero_overlay.set_child(self._backdrop)
+
+        backdrop_path = self.data.get('backdrop_path', '')
+        if backdrop_path:
+            url = self.window.tmdb.image_url(backdrop_path, 'w1280')
+            load_image_async(url, 1280, 720, self._on_backdrop_loaded)
+
+        # Gradient overlay
+        gradient = Gtk.Box()
+        gradient.add_css_class('detail-hero-gradient')
+        gradient.set_vexpand(True)
+        gradient.set_hexpand(True)
+        hero_overlay.add_overlay(gradient)
+
+        # Hero content (poster + info)
+        hero_content = Gtk.Box(spacing=24, valign=Gtk.Align.END)
+        hero_content.set_margin_start(32)
+        hero_content.set_margin_end(32)
+        hero_content.set_margin_bottom(32)
+        hero_overlay.add_overlay(hero_content)
 
         # Poster
         poster_frame = Gtk.Frame()
-        poster_frame.add_css_class('card')
+        poster_frame.add_css_class('detail-poster-frame')
         poster_frame.set_overflow(Gtk.Overflow.HIDDEN)
+        poster_frame.set_valign(Gtk.Align.END)
         self._poster = Gtk.Picture()
-        self._poster.set_size_request(240, 360)
+        self._poster.set_size_request(180, 270)
         self._poster.set_content_fit(Gtk.ContentFit.COVER)
         poster_frame.set_child(self._poster)
-        info_box.append(poster_frame)
+        hero_content.append(poster_frame)
 
         poster_path = self.data.get('poster_path', '')
         if poster_path:
             url = self.window.tmdb.image_url(poster_path, 'w500')
-            load_image_async(url, 240, 360, self._on_poster_loaded)
+            load_image_async(url, 180, 270, self._on_poster_loaded)
 
-        # Details column
-        details = Gtk.Box(
+        # Hero info column
+        hero_info = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=8,
             hexpand=True,
-            valign=Gtk.Align.START,
+            valign=Gtk.Align.END,
         )
-        info_box.append(details)
+        hero_content.append(hero_info)
 
         # Title
         title_label = Gtk.Label(label=title, xalign=0, wrap=True)
-        title_label.add_css_class('title-1')
-        details.append(title_label)
+        title_label.add_css_class('detail-title')
+        hero_info.append(title_label)
 
-        # Meta (rating, year)
-        meta = Gtk.Box(spacing=12)
-        details.append(meta)
+        # Tagline placeholder (filled by _load_details)
+        self._tagline_label = Gtk.Label(xalign=0, wrap=True, visible=False)
+        self._tagline_label.add_css_class('detail-tagline')
+        hero_info.append(self._tagline_label)
 
+        # Metadata chips row
+        self._meta_flow = Gtk.FlowBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            max_children_per_line=20,
+            min_children_per_line=1,
+            row_spacing=6,
+            column_spacing=6,
+            homogeneous=False,
+        )
+        self._meta_flow.set_halign(Gtk.Align.START)
+        hero_info.append(self._meta_flow)
+
+        # Initial chips from search result data
         rating = self.data.get('vote_average', 0)
         if rating > 0:
-            rating_lbl = Gtk.Label(label=f'★ {rating:.1f}')
-            rating_lbl.add_css_class('rating-badge')
-            meta.append(rating_lbl)
-
+            self._add_chip(f'★ {rating:.1f}', 'chip-rating')
         if year_str:
-            year_lbl = Gtk.Label(label=year_str)
-            year_lbl.add_css_class('dim-label')
-            meta.append(year_lbl)
+            self._add_chip(year_str)
+
+        # ── Action buttons ────────────────────────────────────
+        actions_row = Gtk.Box(spacing=12)
+        actions_row.set_margin_top(16)
+        hero_info.append(actions_row)
+
+        watch_btn = Gtk.Button(label='Смотреть')
+        watch_btn.add_css_class('suggested-action')
+        watch_btn.add_css_class('pill')
+        watch_btn.set_icon_name('media-playback-start-symbolic')
+        watch_btn.connect('clicked', self._on_watch_clicked)
+        actions_row.append(watch_btn)
+
+        # ── Body content (below hero) ─────────────────────────
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        body.set_margin_start(32)
+        body.set_margin_end(32)
+        body.set_margin_top(24)
+        body.set_margin_bottom(32)
+        content.append(body)
 
         # Overview
         overview = self.data.get('overview', '')
         if overview:
-            desc = Gtk.Label(
-                label=overview, xalign=0, wrap=True, max_width_chars=80,
+            overview_label = Gtk.Label(
+                label=overview, xalign=0, wrap=True,
+                max_width_chars=100,
             )
-            desc.set_valign(Gtk.Align.START)
-            details.append(desc)
+            overview_label.add_css_class('detail-overview')
+            body.append(overview_label)
 
-        # ── Torrents section ──────────────────────────────────
-
-        content.append(Gtk.Separator())
-
-        torrents_header = Gtk.Box(spacing=12)
-        content.append(torrents_header)
-
-        torrents_title = Gtk.Label(
-            label='Торренты', xalign=0, hexpand=True,
+        # Cast section placeholder
+        self._cast_section = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=12, visible=False,
         )
-        torrents_title.add_css_class('title-2')
-        torrents_header.append(torrents_title)
+        body.append(self._cast_section)
 
-        refresh_btn = Gtk.Button(
-            icon_name='view-refresh-symbolic',
-            tooltip_text='Обновить',
+        cast_title = Gtk.Label(label='Актёры', xalign=0)
+        cast_title.add_css_class('title-3')
+        self._cast_section.append(cast_title)
+
+        cast_scroll = Gtk.ScrolledWindow(
+            hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+            vscrollbar_policy=Gtk.PolicyType.NEVER,
         )
-        refresh_btn.connect('clicked', lambda *_: self._search_torrents())
-        torrents_header.append(refresh_btn)
+        cast_scroll.set_min_content_height(180)
+        self._cast_section.append(cast_scroll)
 
-        self._torrents_spinner = Gtk.Spinner(
-            spinning=True,
-            halign=Gtk.Align.CENTER,
+        self._cast_box = Gtk.Box(spacing=12)
+        cast_scroll.set_child(self._cast_box)
+
+    # ── Chip helpers ──────────────────────────────────────────
+
+    def _add_chip(self, text, extra_class=None):
+        lbl = Gtk.Label(label=text)
+        lbl.add_css_class('detail-chip')
+        if extra_class:
+            lbl.add_css_class(extra_class)
+        child = Gtk.FlowBoxChild()
+        child.set_child(lbl)
+        self._meta_flow.append(child)
+
+    # ── Navigation ────────────────────────────────────────────
+
+    def _on_watch_clicked(self, _btn):
+        from kadr.views.torrents import TorrentsView
+        view = TorrentsView(
+            self.window, self.media_type, self.data, self._title,
         )
-        self._torrents_spinner.set_size_request(32, 32)
-        self._torrents_spinner.set_margin_top(24)
-        self._torrents_spinner.set_margin_bottom(24)
-        content.append(self._torrents_spinner)
+        self.window.nav_view.push(view.page)
 
-        self._status_label = Gtk.Label(
-            halign=Gtk.Align.CENTER, visible=False,
+    # ── Load full details + credits ───────────────────────────
+
+    def _load_details(self):
+        media_id = self.data.get('id')
+        if not media_id:
+            return
+        run_async(self._fetch_details, self._on_details_loaded, media_id)
+
+    def _fetch_details(self, media_id):
+        tmdb = self.window.tmdb
+        if self.media_type == 'movie':
+            details = tmdb.movie_details(media_id)
+            credits = tmdb.movie_credits(media_id)
+        else:
+            details = tmdb.tv_details(media_id)
+            credits = tmdb.tv_credits(media_id)
+        return details, credits
+
+    def _on_details_loaded(self, result, error):
+        if error or not result:
+            return
+        details, credits = result
+
+        # Tagline
+        tagline = details.get('tagline', '')
+        if tagline:
+            self._tagline_label.set_label(tagline)
+            self._tagline_label.set_visible(True)
+
+        # Additional chips: runtime / seasons, genres
+        if self.media_type == 'movie':
+            runtime = details.get('runtime')
+            if runtime:
+                self._add_chip(_fmt_runtime(runtime))
+        else:
+            seasons = details.get('number_of_seasons')
+            if seasons:
+                s = 'сезон' if seasons == 1 else ('сезона' if 2 <= seasons <= 4 else 'сезонов')
+                self._add_chip(f'{seasons} {s}')
+            episodes = details.get('number_of_episodes')
+            if episodes:
+                self._add_chip(f'{episodes} эп.')
+
+        genres = details.get('genres', [])
+        for g in genres[:4]:
+            self._add_chip(g.get('name', ''))
+
+        # Cast
+        cast = credits.get('cast', [])[:15]
+        if cast:
+            self._cast_section.set_visible(True)
+            for person in cast:
+                self._build_cast_card(person)
+
+    def _build_cast_card(self, person):
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=4,
         )
-        self._status_label.add_css_class('dim-label')
-        content.append(self._status_label)
+        card.set_size_request(100, -1)
 
-        self._torrent_list = Gtk.ListBox(
-            selection_mode=Gtk.SelectionMode.NONE,
-            visible=False,
+        # Avatar
+        avatar_frame = Gtk.Frame()
+        avatar_frame.set_overflow(Gtk.Overflow.HIDDEN)
+        avatar_frame.add_css_class('cast-avatar-frame')
+        avatar = Gtk.Picture()
+        avatar.set_size_request(80, 80)
+        avatar.set_content_fit(Gtk.ContentFit.COVER)
+        avatar_frame.set_child(avatar)
+        card.append(avatar_frame)
+
+        profile = person.get('profile_path', '')
+        if profile:
+            url = self.window.tmdb.image_url(profile, 'w185')
+            load_image_async(url, 80, 80, lambda tex, pic=avatar: pic.set_paintable(tex) if tex else None)
+
+        name_label = Gtk.Label(
+            label=person.get('name', ''),
+            xalign=0.5,
+            wrap=True,
+            max_width_chars=12,
+            lines=2,
         )
-        self._torrent_list.add_css_class('boxed-list')
-        content.append(self._torrent_list)
+        name_label.add_css_class('caption')
+        card.append(name_label)
 
-    # ── Poster callback ───────────────────────────────────────
+        role = person.get('character', '')
+        if role:
+            role_label = Gtk.Label(
+                label=role,
+                xalign=0.5,
+                wrap=True,
+                max_width_chars=12,
+                lines=1,
+            )
+            role_label.add_css_class('dim-label')
+            role_label.add_css_class('caption')
+            card.append(role_label)
+
+        self._cast_box.append(card)
+
+    # ── Image callbacks ────────────────────────────────────────
+
+    def _on_backdrop_loaded(self, texture):
+        if texture:
+            self._backdrop.set_paintable(texture)
 
     def _on_poster_loaded(self, texture):
         if texture:
             self._poster.set_paintable(texture)
-
-    # ── Torrent search ────────────────────────────────────────
-
-    def _search_torrents(self):
-        self._torrents_spinner.set_visible(True)
-        self._torrents_spinner.set_spinning(True)
-        self._status_label.set_visible(False)
-        self._torrent_list.set_visible(False)
-        self._clear_list()
-
-        queries = self._build_queries()
-
-        run_async(
-            self._search_with_fallback,
-            self._on_torrents_loaded,
-            queries,
-        )
-
-    def _build_queries(self):
-        queries = []
-        if self.media_type == 'movie':
-            orig = self.data.get('original_title', '')
-            title = self.data.get('title', '')
-            date = self.data.get('release_date', '')
-        else:
-            orig = self.data.get('original_name', '')
-            title = self.data.get('name', '')
-            date = self.data.get('first_air_date', '')
-
-        year = date[:4] if date and len(date) >= 4 else ''
-
-        if orig:
-            queries.append(orig)
-        if title and title != orig:
-            queries.append(title)
-        if orig and year:
-            queries.append(f'{orig} {year}')
-
-        return queries or [title or orig]
-
-    def _search_with_fallback(self, queries):
-        server_id = self.window.jackett.resolve_server_id()
-        last_err = None
-        for query in queries:
-            try:
-                results = self.window.jackett.search(server_id, query)
-                if results:
-                    return results
-            except Exception as e:
-                last_err = e
-                continue
-
-        if last_err:
-            raise last_err
-        return []
-
-    def _on_torrents_loaded(self, results, error):
-        self._torrents_spinner.set_visible(False)
-        self._torrents_spinner.set_spinning(False)
-
-        if error:
-            self._status_label.set_label(f'Ошибка: {error}')
-            self._status_label.set_visible(True)
-            return
-
-        if not results:
-            self._status_label.set_label('Торренты не найдены')
-            self._status_label.set_visible(True)
-            return
-
-        self._torrent_list.set_visible(True)
-        for torrent in results:
-            row = TorrentRow(
-                torrent=torrent,
-                on_download=self._on_download,
-                on_copy=self._on_copy_magnet,
-            )
-            self._torrent_list.append(row)
-
-    # ── Torrent actions ───────────────────────────────────────
-
-    def _on_download(self, torrent):
-        magnet = torrent.get('magnet_uri', '')
-        link = torrent.get('link', '')
-        name = torrent.get('title', '')
-
-        try:
-            if magnet:
-                client = self.window.downloads.send_magnet(magnet, name)
-            elif link:
-                client = self.window.downloads.send_torrent_url(link, name)
-            else:
-                self.window.show_toast('Нет ссылки для скачивания')
-                return
-            self.window.show_toast(f'Отправлено в {client}')
-        except Exception as e:
-            self.window.show_toast(str(e))
-
-    def _on_copy_magnet(self, torrent):
-        magnet = torrent.get('magnet_uri', '')
-        if not magnet:
-            self.window.show_toast('Магнет-ссылка недоступна')
-            return
-        try:
-            copy_to_clipboard(magnet)
-            self.window.show_toast('Магнет-ссылка скопирована')
-        except Exception as e:
-            self.window.show_toast(str(e))
-
-    # ── Helpers ───────────────────────────────────────────────
-
-    def _clear_list(self):
-        while True:
-            child = self._torrent_list.get_first_child()
-            if child is None:
-                break
-            self._torrent_list.remove(child)

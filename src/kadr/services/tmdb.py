@@ -56,47 +56,38 @@ class TMDBService:
             return None
         return f"{self._proxy['image_url']}/t/p/{size}{path}"
 
-    def search_movies(self, query, page=1):
-        url = self._api_url('/search/movie', query=query, page=page)
-        resp = self.session.get(url, timeout=15)
+    def _fetch(self, path, timeout=10, **params):
+        url = self._api_url(path, **params)
+        resp = self.session.get(url, timeout=timeout)
         resp.raise_for_status()
         return resp.json()
+
+    def search_movies(self, query, page=1):
+        return self._fetch('/search/movie', query=query, page=page)
 
     def search_tv(self, query, page=1):
-        url = self._api_url('/search/tv', query=query, page=page)
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
+        return self._fetch('/search/tv', query=query, page=page)
 
     def popular_movies(self, page=1):
-        url = self._api_url('/movie/popular', page=page)
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
+        return self._fetch('/movie/popular', page=page)
 
     def popular_tv(self, page=1):
-        url = self._api_url('/tv/popular', page=page)
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
+        return self._fetch('/tv/popular', page=page)
 
     def movie_details(self, movie_id):
-        url = self._api_url(f'/movie/{int(movie_id)}')
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
+        return self._fetch(f'/movie/{int(movie_id)}')
 
     def tv_details(self, tv_id):
-        url = self._api_url(f'/tv/{int(tv_id)}')
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
+        return self._fetch(f'/tv/{int(tv_id)}')
+
+    def movie_credits(self, movie_id):
+        return self._fetch(f'/movie/{int(movie_id)}/credits')
+
+    def tv_credits(self, tv_id):
+        return self._fetch(f'/tv/{int(tv_id)}/credits')
 
     def genres(self, media_type='movie'):
-        url = self._api_url(f'/genre/{media_type}/list')
-        resp = self.session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json().get('genres', [])
+        return self._fetch(f'/genre/{media_type}/list').get('genres', [])
 
     def check_health(self, proxy_id):
         proxy = TMDB_PROXIES.get(proxy_id)

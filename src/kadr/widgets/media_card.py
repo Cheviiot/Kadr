@@ -6,7 +6,6 @@ from kadr.utils import load_image_async
 
 POSTER_WIDTH = 155
 POSTER_HEIGHT = 232
-COVER_RATIO = 1.5
 
 
 def _has_ru_title(data, media_type):

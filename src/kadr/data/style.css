@@ -88,3 +88,72 @@ flowboxchild:selected {
 .error-label {
     color: @error_color;
 }
+
+/* ── Detail View — Streaming-Platform Hero ────────────────────────────────── */
+
+.detail-backdrop {
+    background-color: alpha(@card_shade_color, 0.3);
+}
+
+.detail-hero-gradient {
+    background: linear-gradient(to bottom,
+        alpha(@window_bg_color, 0.0) 0%,
+        alpha(@window_bg_color, 0.40) 50%,
+        @window_bg_color 100%);
+}
+
+.detail-poster-frame {
+    border-radius: 12px;
+    box-shadow: 0 4px 24px alpha(black, 0.35), 0 0 0 1px alpha(black, 0.08);
+    background: @card_bg_color;
+}
+
+.detail-title {
+    font-size: 2em;
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 2px 8px alpha(black, 0.5);
+}
+
+.detail-tagline {
+    font-size: 1em;
+    font-style: italic;
+    color: alpha(white, 0.7);
+    text-shadow: 0 1px 4px alpha(black, 0.4);
+}
+
+.detail-chip {
+    background: alpha(white, 0.15);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-shadow: 0 1px 3px alpha(black, 0.3);
+}
+
+.chip-rating {
+    background: alpha(rgba(245, 197, 24, 0.8), 0.25);
+    color: rgba(255, 220, 80, 1);
+    font-weight: bold;
+}
+
+.detail-overview {
+    font-size: 1em;
+    line-height: 1.6;
+    opacity: 0.85;
+}
+
+/* ── Cast Cards ───────────────────────────────────────────────────────────── */
+
+.cast-avatar-frame {
+    border-radius: 50%;
+    min-width: 80px;
+    min-height: 80px;
+    background: alpha(@card_shade_color, 0.2);
+}
+
+.title-3 {
+    font-size: 1.15em;
+    font-weight: 700;
+}
